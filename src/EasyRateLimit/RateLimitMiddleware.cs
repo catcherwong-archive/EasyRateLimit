@@ -37,8 +37,8 @@
             var canProcess = true;
 
             lock (lockObj)
-            {
-                canProcess = _handler.GetTokenAsync(key, _options.Total, _options.PerSencond).Result;
+            {                
+                canProcess = _handler.Acquire(key, _options.Total, _options.PerSencond);
             }
 
             if (canProcess)

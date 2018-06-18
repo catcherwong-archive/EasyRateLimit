@@ -1,6 +1,5 @@
 ﻿namespace EasyRateLimit.Redis
-{
-    using System.Threading.Tasks;
+{    
     using StackExchange.Redis;
 
     public class RedisManager : IRedisManager
@@ -18,56 +17,17 @@
         {
             this._database = provider.GetDatabase();
         }
-
+              
         /// <summary>
-        /// Pushs the async.
+        /// Execs the lua script.
         /// </summary>
-        /// <returns>The async.</returns>
-        /// <param name="key">Key.</param>
-        /// <param name="value">Value.</param>
-        public Task<long> PushAsync(string key, RedisValue[] value)
+        /// <returns>The lua script.</returns>
+        /// <param name="luaScript">Lua script.</param>
+        /// <param name="redisKeys">Redis keys.</param>
+        /// <param name="redisValues">Redis values.</param>
+        public RedisResult ExecLuaScript(string luaScript,RedisKey[] redisKeys = null,RedisValue[] redisValues = null)
         {
-            return _database.ListLeftPushAsync(key, value);
-        }
-
-        /// <summary>
-        /// Gets the length asnyc.
-        /// </summary>
-        /// <returns>The length asnyc.</returns>
-        /// <param name="key">Key.</param>
-        public Task<long> GetLenAsnyc(string key)
-        {
-
-            return _database.ListLengthAsync(key);
-        }
-
-        /// <summary>
-        /// Pops the async.
-        /// </summary>
-        /// <returns>The async.</returns>
-        /// <param name="key">Key.</param>
-        public async Task<long> PopAsync(string key)
-        {
-            var res = await _database.ListRightPopAsync(key);
-
-            if (res.HasValue)
-            {
-                return (long)res;
-            }
-            else
-            {
-                return 0;
-            }
-        }
-
-        /// <summary>
-        /// Sets if not exists.
-        /// </summary>
-        /// <returns>The if not exists.</returns>
-        /// <param name="key">Key.</param>
-        public Task<bool> SetIfNotExists(string key)
-        {
-            return _database.StringSetAsync(key, 1, when: When.NotExists);
+            return _database.ScriptEvaluate(luaScript, redisKeys, redisValues);
         }
     }
 }

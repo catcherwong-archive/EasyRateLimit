@@ -8,20 +8,14 @@ namespace EasyRateLimit
     public interface IRateLimitHandler
     {
         /// <summary>
-        /// Adds the token async.
+        /// Acquire the specified key, total, perSecond and requstCount.
         /// </summary>
-        /// <returns>The token async.</returns>
-        /// <param name="name">Name.</param>
-        /// <param name="len">Length.</param>
-        Task<bool> AddTokenAsync(string name, int len);
-
-        /// <summary>
-        /// Gets the token async.
-        /// </summary>
-        /// <returns>The token async.</returns>
-        /// <param name="name">Name.</param>
+        /// <returns>The acquire.</returns>
+        /// <param name="key">Key.</param>
         /// <param name="total">Total.</param>
         /// <param name="perSecond">Per second.</param>
-        Task<bool> GetTokenAsync(string name, long total, int perSecond);
+        /// <param name="requstCount">Requst count.</param>
+        bool Acquire(string key, long total, int perSecond, int requstCount = 1);
+
     }
 }
