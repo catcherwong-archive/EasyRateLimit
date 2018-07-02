@@ -1,16 +1,11 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Threading.Tasks;
-using Microsoft.AspNetCore.Builder;
-using Microsoft.AspNetCore.Hosting;
-using Microsoft.Extensions.Configuration;
-using Microsoft.Extensions.DependencyInjection;
-using Microsoft.Extensions.Logging;
-using Microsoft.Extensions.Options;
-
-namespace EasyRateLimit.Demo
+﻿namespace EasyRateLimit.Demo
 {
+    using EasyRateLimit;
+    using Microsoft.AspNetCore.Builder;
+    using Microsoft.AspNetCore.Hosting;
+    using Microsoft.Extensions.Configuration;
+    using Microsoft.Extensions.DependencyInjection;    
+
     public class Startup
     {
         public Startup(IConfiguration configuration)
@@ -20,20 +15,24 @@ namespace EasyRateLimit.Demo
 
         public IConfiguration Configuration { get; }
 
-        // This method gets called by the runtime. Use this method to add services to the container.
         public void ConfigureServices(IServiceCollection services)
         {
+            services.AddRateLimit(options => 
+            {
+                options.PerSencond = 1;
+                options.RedisOptions = new Redis.RedisOptions { Configuration = "localhost" };
+                options.Total = 200;
+            });
             services.AddMvc();
         }
 
-        // This method gets called by the runtime. Use this method to configure the HTTP request pipeline.
         public void Configure(IApplicationBuilder app, IHostingEnvironment env)
         {
             if (env.IsDevelopment())
             {
                 app.UseDeveloperExceptionPage();
             }
-
+            app.UseRateLimiting();
             app.UseMvc();
         }
     }
