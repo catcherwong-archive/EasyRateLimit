@@ -5,7 +5,7 @@
     using StackExchange.Redis;
 
     /// <summary>
-    /// Token bucket handler.
+    /// Rate limit handler.
     /// </summary>
     public class RateLimitHandler : IRateLimitHandler
     {
@@ -15,7 +15,7 @@
         private readonly IRedisManager _redisManager;
 
         /// <summary>
-        /// Initializes a new instance of the <see cref="T:EasyRateLimit.TokenBucketHandler"/> class.
+        /// Initializes a new instance of the <see cref="T:EasyRateLimit.RateLimitHandler"/> class.
         /// </summary>
         /// <param name="redisManager">Redis manager.</param>
         public RateLimitHandler(IRedisManager redisManager)
