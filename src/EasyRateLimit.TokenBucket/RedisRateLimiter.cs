@@ -1,9 +1,10 @@
-﻿using System;
-namespace EasyRateLimit.TokenBucket
+﻿namespace EasyRateLimit.TokenBucket
 {
     using EasyRateLimit.Core.Redis;
+    using StackExchange.Redis;
+    using System;
 
-    public class RedisRateLimiter: ITokenBucketRateLimiter
+    public class RedisRateLimiter : ITokenBucketRateLimiter
     {
         private readonly IRedisManager _redisManager;
 
@@ -11,7 +12,7 @@ namespace EasyRateLimit.TokenBucket
         {
             this._redisManager = redisManager;
         }
-      
+
         /// <summary>
         /// The lua script.
         /// </summary>
@@ -42,23 +43,35 @@ namespace EasyRateLimit.TokenBucket
         redis.pcall('HSET', KEYS[1], 'last_mill_second', curr_ts)
     end
 
-    local result = -1
+    local result = false
     if (local_curr_tokens - request_count >= 0) then
-        result = 1
+        --- can acquire
+        result = true
         redis.pcall('HSET', KEYS[1], 'curr_tokens', local_curr_tokens - request_count)
     else
+        --- can not acquire
         redis.pcall('HSET', KEYS[1], 'curr_tokens', local_curr_tokens)
     end
 
     return result
 ";
 
-        public bool Acquire(string key, long total, int perSecond, int requstCount = 1)
+        /// <summary>
+        /// Acquire the specified key, total, rate and requstCount.
+        /// </summary>
+        /// <returns>The acquire.</returns>
+        /// <param name="key">Key.</param>
+        /// <param name="total">Total.</param>
+        /// <param name="rate">Rate.</param>
+        /// <param name="requstCount">Requst count.</param>
+        public bool Acquire(string key, long total, double rate, int requstCount = 1)
         {
+            var res = _redisManager.ExecLuaScript(lua_script, new RedisKey[] { key }, new RedisValue[]
+            {
+                total, rate, DateTimeOffset.UtcNow.ToUnixTimeMilliseconds(), requstCount
+            });
 
-
-
-            return false;
+            return (bool)res;
         }
     }
 }
