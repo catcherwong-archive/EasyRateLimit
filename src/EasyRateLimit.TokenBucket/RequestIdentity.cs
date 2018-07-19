@@ -18,9 +18,9 @@
         public string HttpVerb { get; set; }
 
         /// <summary>
-        /// Gets or sets the name.
+        /// Gets or sets the client identifier.
         /// </summary>
-        /// <value>The name.</value>
-        public string Name { get; set; }
+        /// <value>The client identifier.</value>
+        public string ClientId { get; set; }
     }
 }

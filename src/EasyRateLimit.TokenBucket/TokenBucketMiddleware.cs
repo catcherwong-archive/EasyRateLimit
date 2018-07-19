@@ -1,6 +1,7 @@
 namespace EasyRateLimit.TokenBucket
 {
     using System;
+    using System.Linq;
     using System.Threading.Tasks;
     using Microsoft.AspNetCore.Http;
     using Microsoft.Extensions.Logging;
@@ -14,6 +15,8 @@ namespace EasyRateLimit.TokenBucket
 
         private readonly ILogger _logger;
 
+        private readonly TokenBucketOptions _options;
+
         private static object lockObj = new object();
 
         /// <summary>
@@ -22,14 +25,17 @@ namespace EasyRateLimit.TokenBucket
         /// <param name="next">Next.</param>
         /// <param name="rateLimiter">Rate limiter.</param>
         /// <param name="factory">Factory.</param>
+        /// <param name="options">Options.</param>
         public RateLimitMiddleware(
             RequestDelegate next
             , ITokenBucketRateLimiter rateLimiter
-            , ILoggerFactory factory)
+            , ILoggerFactory factory
+            , IOptions<TokenBucketOptions> options)
         {
             this._next = next;
             this._rateLimiter = rateLimiter;
             this._logger = factory.CreateLogger<RateLimitMiddleware>();
+            this._options = options.Value;
         }
 
         /// <summary>
@@ -40,25 +46,19 @@ namespace EasyRateLimit.TokenBucket
         public async Task Invoke(HttpContext httpContext)
         {
             //build request identity
-            var requestIdentity = new RequestIdentity
-            {
-                Path = httpContext.Request.Path.ToString().ToLowerInvariant(),
-                HttpVerb = httpContext.Request.Method.ToLowerInvariant(),
-                //auth
-                Name = httpContext.User?.Identity?.Name
-            };
+            var requestIdentity = BuildRequestIdentity(httpContext);
             //hash
             var key = GetRequestIdentityKey(requestIdentity);
 
             var canProcess = true;
 
-            lock(lockObj)
+            lock (lockObj)
             {
                 //read from cache
                 canProcess = _rateLimiter.Acquire(key, 100, 0.1);
             }
 
-            if(canProcess)
+            if (canProcess)
             {
                 await _next.Invoke(httpContext);
                 return;
@@ -75,13 +75,34 @@ namespace EasyRateLimit.TokenBucket
         }
 
         /// <summary>
+        /// Builds the request identity.
+        /// </summary>
+        /// <returns>The request identity.</returns>
+        /// <param name="httpContext">Http context.</param>
+        private RequestIdentity BuildRequestIdentity(HttpContext httpContext)
+        {
+            var clientId = "anonymous";
+            if (httpContext.Request.Headers.Keys.Contains(_options.ClientIdHeader, StringComparer.CurrentCultureIgnoreCase))
+            {
+                clientId = httpContext.Request.Headers[_options.ClientIdHeader].First();
+            }
+
+            return new RequestIdentity
+            {
+                Path = httpContext.Request.Path.ToString().ToLowerInvariant(),
+                HttpVerb = httpContext.Request.Method.ToLowerInvariant(),
+                ClientId = clientId
+            };
+        }
+
+        /// <summary>
         /// Gets the request identity key.
         /// </summary>
         /// <returns>The request identity key.</returns>
         /// <param name="requestIdentity">Request identity.</param>
         private string GetRequestIdentityKey(RequestIdentity requestIdentity)
         {
-            var key = $"{requestIdentity.HttpVerb}:{requestIdentity.Path}:{requestIdentity.Name}";
+            var key = $"{requestIdentity.HttpVerb}:{requestIdentity.Path}:{requestIdentity.ClientId}";
 
             var idBytes = System.Text.Encoding.UTF8.GetBytes(key);
 
