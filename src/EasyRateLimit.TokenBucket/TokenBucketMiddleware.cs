@@ -47,31 +47,18 @@ namespace EasyRateLimit.TokenBucket
         {
             //build request identity
             var requestIdentity = BuildRequestIdentity(httpContext);
-            //hash
-            var key = GetRequestIdentityKey(requestIdentity);
 
-            var canProcess = true;
-
-            lock (lockObj)
+            if (_options.ClientWhitelist != null && _options.ClientWhitelist.Any())
             {
-                //read from cache
-                canProcess = _rateLimiter.Acquire(key, 100, 0.1);
+                if (!_options.ClientWhitelist.Contains(requestIdentity.ClientId))
+                {
+                    await HandleRateLimitAsync(httpContext, requestIdentity);
+                    return;
+                }
             }
 
-            if (canProcess)
-            {
-                await _next.Invoke(httpContext);
-                return;
-            }
-            else
-            {
-                //will be blocked
-                _logger.LogInformation($"Request {requestIdentity.HttpVerb},{requestIdentity.Path} has been blocked!");
-
-                httpContext.Response.StatusCode = 429;
-                await httpContext.Response.WriteAsync("up to limit");
-                return;
-            }
+            await _next.Invoke(httpContext);
+            return;
         }
 
         /// <summary>
@@ -116,5 +103,37 @@ namespace EasyRateLimit.TokenBucket
             return BitConverter.ToString(hashBytes).Replace("-", string.Empty);
         }
 
+        /// <summary>
+        /// Handles the rate limit async.
+        /// </summary>
+        /// <returns>The rate limit async.</returns>
+        /// <param name="httpContext">Http context.</param>
+        /// <param name="requestIdentity">Request identity.</param>
+        private async Task HandleRateLimitAsync(HttpContext httpContext, RequestIdentity requestIdentity)
+        {
+            var limitRule = _options.ClientRules.Where(x => x.ClientId == requestIdentity.ClientId).SelectMany(x => x.TokenBucketRules).FirstOrDefault();
+
+            if (limitRule != null)
+            {
+                var canProcess = true;
+                //hash
+                var key = GetRequestIdentityKey(requestIdentity);
+
+                lock (lockObj)
+                {
+                    //read from 
+                    canProcess = _rateLimiter.Acquire(key, limitRule.Total, limitRule.Rate);
+                }
+
+                if (!canProcess)
+                {
+                    //will be blocked
+                    _logger.LogInformation($"Request {requestIdentity.ClientId},{requestIdentity.HttpVerb},{requestIdentity.Path} has been blocked!");
+
+                    httpContext.Response.StatusCode = _options.HttpStatusCode;
+                    await httpContext.Response.WriteAsync(_options.Message);
+                }
+            }
+        }
     }
 }
