@@ -93,7 +93,9 @@
         /// <param name="requestIdentity">Request identity.</param>
         private Task<bool> HandleRateLimitAsync(HttpContext httpContext, RequestIdentity requestIdentity)
         {
-            var limitRule = _options.ClientRules.Where(x => x.ClientId == requestIdentity.ClientId).SelectMany(x => x.CounterRules).FirstOrDefault();
+            var limitRules = _options.ClientRules.Where(x => x.ClientId == requestIdentity.ClientId).SelectMany(x => x.CounterRules);
+
+            var limitRule = limitRules.FirstOrDefault(x=>x.EndPoint.Equals(requestIdentity.Path));
 
             if (limitRule != null)
             {

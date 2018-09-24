@@ -61,6 +61,12 @@
     public class CounterRule
     {
         /// <summary>
+        /// Gets or sets the end point.
+        /// </summary>
+        /// <value>The end point.</value>
+        public string EndPoint { get; set; }        
+
+        /// <summary>
         /// Gets or sets the period(Seconds).
         /// </summary>
         /// <value>The period.</value>
